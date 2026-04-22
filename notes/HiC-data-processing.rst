@@ -18,7 +18,7 @@ The following were used:
 Raw data processing
 =======================
 
-* ``Fastq`` files were processed and summarised using ``Juicer`` v. 1.6 (https://github.com/aidenlab/juicer). ``BWA 0.7.17-r1188`` was used for read mapping.
+* ``Fastq`` files were processed and summarised using ``Juicer`` 1.6 (https://github.com/aidenlab/juicer). ``BWA 0.7.17-r1188`` was used for read mapping.
 
 * Files ``juicer.sh`` and ``split_rmdups.awk`` were modified to fit job scheduling configuration and module system on HPC Rackham (`Uppmax <https://www.uu.se/centrum/uppmax/>`_); the modified code is at https://github.com/agata-sm/juicer-rackham.
 
@@ -34,7 +34,7 @@ TADs
 -------
 
 
-* TADs were detected using ``OnTAD`` v. 1.4 (gcc v. 8.4.0), on merged replicate matrices, 10 kb bin size.
+* TADs were detected using ``OnTAD`` v. 1.4 (gcc 8.4.0), on merged replicate matrices, 10 kb bin size.
 
 	Parameters used:
 
