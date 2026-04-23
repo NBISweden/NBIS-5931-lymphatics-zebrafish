@@ -73,8 +73,8 @@ Loops
 
 * Loops different between LEC and BEC (tissue-specific): loops within at least 40kb distance from each other; at least one end of A mustn't overlap B::
 
-		bedtools pairtopair -type notboth -slop 40000 -a $loops_LEC -b $loops_BEC > LEC_vs_BEC.common.nooverlap_40kb.bedpe
+	bedtools pairtopair -type notboth -slop 40000 -a $loops_LEC -b $loops_BEC > LEC_vs_BEC.common.nooverlap_40kb.bedpe
 
-		bedtools pairtopair -type notboth -slop 40000 -a $loops_BEC -b $loops_LEC > BEC_vs_LEC.common.nooverlap_40kb.bedpe
+	bedtools pairtopair -type notboth -slop 40000 -a $loops_BEC -b $loops_LEC > BEC_vs_LEC.common.nooverlap_40kb.bedpe
 
 
