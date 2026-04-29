@@ -38,7 +38,7 @@ TADs
 
 	Parameters used:
 
-	* ``-lsize`` Lsize 7 (The local region size that used to determine local minimum)
+	* ``-lsize`` Lsize 7 (The local region size that is used to determine local minimum)
 
 	* ``-penalty`` 0.075 (The penalty applied in scoring function to select positive TADs. Higher penalty score will result in fewer TADs)
 
