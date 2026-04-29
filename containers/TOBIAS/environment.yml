@@ -1,0 +1,13 @@
+name: env
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.7
+  - libgcc-ng=12
+  - pip
+  - moods>=1.9
+  - pybedtools
+  - pip:
+      - tobias==0.16.0
+      - uropa==4.0.2
