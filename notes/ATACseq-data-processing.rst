@@ -33,6 +33,6 @@ Data analysis
 
 * TF footprinting was performed on bam files merged per tissue using TOBIAS (0.16.0) (https://github.com/loosolab/TOBIAS)
 
-* 
+* Construction of the TF network was performed using custom scripts
 
 

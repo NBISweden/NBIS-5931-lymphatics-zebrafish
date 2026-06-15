@@ -1,0 +1,878 @@
+<!-- 
+This is a child document for differential consensus TAD report nbis proj 5931
+version 5vi2026
+based on version from 20-26i2026
+
+HiC_ATACseq_RNAseq.qmd
+HiC-ATACseq-RNAseq.R
+
+
+performs feature overlap of differential TADs and boundaries
+summarises the results
+overlaps by permutation tests
+-->
+
+
+
+```{r include=FALSE,cache=FALSE}
+
+library(knitr)
+library(bookdown)
+
+
+knitr::opts_chunk$set(echo = TRUE, 
+                      collapse = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      error=TRUE,
+                      include=TRUE)
+
+options(knitr.duplicate.label = "allow")
+
+require(tidyverse)
+```
+
+#### Genes within selected TADs
+
+
+##### LEC, BEC and vascular markers within `r txt_string_seltads`
+
+
+```{r}
+#| label: selTADs-gene-overlaps
+
+subresdir_gene_pref=paste(subresdir_name,"/genes")
+
+subresdir_gene=file.path(subresdir,"genes")
+dir.create(subresdir_gene,recursive=TRUE)
+
+lec_genes.dif_tads=get_seltad_overlaps(sel_tads.gr=sel_tads.gr,goi_genes_df=genes_lec)
+bec_genes.dif_tads=get_seltad_overlaps(sel_tads.gr=sel_tads.gr,goi_genes_df=genes_bec)
+vasc_genes.dif_tads=get_seltad_overlaps(sel_tads.gr=sel_tads.gr,goi_genes_df=genes_vasc)
+all_genes.dif_tads=get_seltad_overlaps(sel_tads.gr=sel_tads.gr,goi_genes_df=genes_all)
+
+save_overlap_genes(df=lec_genes.dif_tads[[2]],dir=subresdir_gene,pref1=pref_seltads,pref2="LEC_genes",cons_tads=cons_tads.dif.combined.wg)
+save_overlap_genes(df=bec_genes.dif_tads[[2]],dir=subresdir_gene,pref1=pref_seltads,pref2="BEC_genes",cons_tads=cons_tads.dif.combined.wg)
+save_overlap_genes(df=vasc_genes.dif_tads[[2]],dir=subresdir_gene,pref1=pref_seltads,pref2="vascular_genes",cons_tads=cons_tads.dif.combined.wg)
+save_overlap_genes(df=all_genes.dif_tads[[2]],dir=subresdir_gene,pref1=pref_seltads,pref2="all_genes",cons_tads=cons_tads.dif.combined.wg)
+```
+
+<br />
+<br />
+
+
+
+
+**Number of genes in overlaps of `r txt_string_seltads` with genes of interest**
+
+
+* LEC genes: `r nrow(lec_genes.dif_tads[[1]])`
+
+* BEC genes: `r nrow(bec_genes.dif_tads[[1]])`
+
+* vascular genes: `r nrow(vasc_genes.dif_tads[[1]])`
+
+* all genes: `r nrow(all_genes.dif_tads[[1]])`
+
+
+<br />
+<br />
+
+
+These gene lists are saved in files in directory `r subresdir_gene_pref`.
+
+<br />
+<br />
+
+
+::: {#tbl-selTADs-geneannot-lec}
+
+```{r}
+#| label: tbl-selTADs-gene-overlaps-lec
+#| echo: false
+
+kbl(lec_genes.dif_tads[[1]], row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+
+```
+LEC genes within boundaries of `r txt_string_seltads`.  
+:::
+
+
+<br />
+<br />
+
+
+
+::: {#tbl-selTADs-geneannot-bec}
+
+```{r}
+#| label: tbl-selTADs-gene-overlaps-bec
+#| echo: false
+
+kbl(bec_genes.dif_tads[[1]], row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+
+```
+BEC genes within boundaries of `r txt_string_seltads`.  
+:::
+
+
+
+<br />
+<br />
+
+::: {#tbl-selTADs-geneannot-vasc}
+
+```{r}
+#| label: tbl-selTADs-gene-overlaps-vasc
+#| echo: false
+
+kbl(vasc_genes.dif_tads[[1]], row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+
+```
+Vascular genes within boundaries of `r txt_string_seltads`.  
+:::
+
+
+<br />
+<br />
+
+<br />
+<br />
+
+##### Overlap significance: `r txt_string_seltads` and DE genes
+
+
+
+```{r}
+#| label: genes-diftad-overlaps
+
+feature_df=genes_all|>
+      dplyr::rename(chr=chromosome_name,start=start_position,end=end_position,id=external_gene_name)|>
+      dplyr::select(chr,start,end,id)
+
+feature.gr=regioneR::toGRanges(as.data.frame(feature_df))
+
+
+gene_annot_difTAD=feature_body_overlap(test_tads.gr=sel_tads.gr,feature.gr=feature.gr)
+gene_annot_consTAD=feature_body_overlap(test_tads.gr=all_consTADs.gr,feature.gr=feature.gr)
+
+
+### overlap of LEC / BEC genes with dif TADs
+
+overlaps_difTADs.gene_lec=get_overlaps_sig(genes.all=genes_all$external_gene_name,
+  genes.sel=genes_lec$external_gene_name,
+  overlaps.dif=gene_annot_difTAD[["genes"]],
+  overlaps.all=gene_annot_consTAD[["genes"]])
+
+overlaps_difTADs.gene_bec=get_overlaps_sig(genes.all=genes_all$external_gene_name,
+  genes.sel=genes_bec$external_gene_name,
+  overlaps.dif=gene_annot_difTAD[["genes"]],
+  overlaps.all=gene_annot_consTAD[["genes"]])
+
+genes_de=c(genes_lec$external_gene_name,genes_bec$external_gene_name)
+
+overlaps_difTADs.gene_de=get_overlaps_sig(genes.all=genes_all$external_gene_name,
+  genes.sel=genes_de,
+  overlaps.dif=gene_annot_difTAD[["genes"]],
+  overlaps.all=gene_annot_consTAD[["genes"]])
+
+
+
+contingency_tab_gene_lec=overlaps_difTADs.gene_lec[["cont_tab"]]
+p.fisher_gene_lec=overlaps_difTADs.gene_lec[["p.fisher"]]
+
+contingency_tab_gene_bec=overlaps_difTADs.gene_bec[["cont_tab"]]
+p.fisher_gene_bec=overlaps_difTADs.gene_bec[["p.fisher"]]
+
+contingency_tab_gene_de=overlaps_difTADs.gene_de[["cont_tab"]]
+p.fisher_gene_de=overlaps_difTADs.gene_de[["p.fisher"]]
+```
+
+<br />
+<br />
+
+Statistical significance of the association of selected TADs: **`r txt_string_seltads`**
+and LEC / BEC / all DE genes (gene body overlapping selected TADs)
+was determined using `Fisher's exact test`.
+
+The contingency tables are listed below.
+
+The p value for overlap significance:
+
+* LEC genes with gene body within selected TADs: **p=`r p.fisher_gene_lec$p.value`**.
+
+* BEC genes with gene body within selected TADs: **p=`r p.fisher_gene_bec$p.value`**.
+
+* all DE genes with gene body within selected TADs: **p=`r p.fisher_gene_de$p.value`**.
+
+
+<br />
+<br />
+
+::: {#tbl-contingency-gene-lec}
+
+```{r}
+#| echo: false
+kbl(contingency_tab_gene_lec, row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+
+Contingency table for LEC genes with gene bodies within `r txt_string_seltads`.
+:::
+
+<br />
+
+::: {#tbl-contingency-gene-bec}
+
+```{r}
+#| echo: false
+kbl(contingency_tab_gene_bec, row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+
+Contingency table for BEC genes with gene bodies within `r txt_string_seltads`.
+:::
+
+<br />
+
+::: {#tbl-contingency-gene-de}
+
+```{r}
+#| echo: false
+kbl(contingency_tab_gene_de, row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+
+Contingency table for all DE genes (LEC and BEC) with gene bodies within `r txt_string_seltads`.
+:::
+
+<br />
+<br />
+
+
+
+#### Types of chromatin rearrangements in `r txt_string_seltads` encompassing DE and non-DE genes
+
+
+Types of chromatin rearrangements in TADs encompassing DE and non-DE genes are presented on the barplot below. This plot is saved to file in the same directory as the pie chart on @fig-dif-tads-pie.
+
+
+```{r}
+#| label: difbnds_DEgenes-barplot
+
+genes_selTADs=gene_annot_difTAD[[1]]
+genes.LEC_selTADs=genes_selTADs|>dplyr::filter(id%in%genes_lec_dpf5.ls)
+genes.BEC_selTADs=genes_selTADs|>dplyr::filter(id%in%genes_bec_dpf5.ls)
+
+genes.DE_selTADs=genes_selTADs|>dplyr::filter(id%in%c(genes_lec_dpf5.ls,genes_bec_dpf5.ls))
+
+selTADs.genes_all=cons_tads.dif.combined.ident
+selTADs.genes_DE=cons_tads.dif.combined.ident|>dplyr::filter(tad_id%in%genes.DE_selTADs$tad_id)
+
+nrow(selTADs.genes_all)
+nrow(selTADs.genes_DE)
+
+
+
+df_barplot1=selTADs.genes_all|>
+        dplyr::select(tad_id,smpl,Type)|>
+        dplyr::mutate(Gene=case_when(tad_id%in%selTADs.genes_DE$tad_id ~ "DE",
+                        TRUE ~ "ns"))
+
+df_barplot2=as.data.frame(table(df_barplot1$Gene,df_barplot1$Type))
+df_barplot2=df_barplot2|>
+        dplyr::rename(Gene=Var1,Type=Var2)|>
+        group_by(Gene)|>
+        summarise(Total=sum(Freq))
+
+n_TADs.DE=unname(unlist(df_barplot2|>dplyr::filter(Gene=="DE")|>dplyr::select(Total)))
+n_TADs.ns=unname(unlist(df_barplot2|>dplyr::filter(Gene=="ns")|>dplyr::select(Total)))
+
+
+barplot_difbnds_DEgenes=ggplot(df_barplot1|>arrange(desc(Type)), aes(x=Gene,fill=Type))+
+  geom_bar(position="fill", width=0.5)+
+  theme(aspect.ratio = 1/0.8)+
+  theme_classic()+
+  theme(text = element_text(size = 16))+
+  scale_fill_manual(values=c("#E69F00", "#56B4E9","#008080","#BC8F8F","#8A2BE2","#99999940"))+
+  ylab("Fraction")+
+  annotate("text", x=1.00, y=0.1,label=paste0("n=",n_TADs.DE), color="black",fontface = "bold")+
+  annotate("text", x=2.00, y=0.1,label=paste0("n=",n_TADs.ns), color="black",fontface = "bold")
+
+fname=paste0(file_string1,pref_seltads,".difTADbnds_barplot_DEgenes")
+for (devplot in c("pdf","eps")){
+        fname_full=paste(fname,devplot,sep=".")
+        ggsave(plot=barplot_difbnds_DEgenes, filename=fname_full, path=pieplotdir, device=devplot)
+}
+
+
+barplot_difbnds_DEgenes.h=barplot_difbnds_DEgenes+
+    geom_bar(position="fill", width=0.8)+
+    theme(aspect.ratio = 1/4)+
+    theme(legend.position="bottom")+
+    coord_flip()
+
+
+fname=paste0(file_string1,pref_seltads,".difTADbnds_barplot_DEgenes.horizontal")
+for (devplot in c("pdf","eps")){
+        fname_full=paste(fname,devplot,sep=".")
+        ggsave(plot=barplot_difbnds_DEgenes.h, filename=fname_full, path=pieplotdir, device=devplot)
+}
+
+df_barplot3=as.data.frame(table(df_barplot1$Gene,df_barplot1$Type))
+df_barplot3=df_barplot3|>
+    dplyr::rename(Gene=Var1,Type=Var2)|>
+    tidyr::pivot_wider(names_from=c(Type),values_from=Freq)|>
+    dplyr::rename(StrengthChange=`Strength Change`)
+
+df_barplot3
+
+```
+
+##### Figure EV2 G
+
+
+<br />
+<br />
+
+**Figure EV2 G**
+
+<br />
+<br />
+
+::: {#fig-dif-tadsbnds-DEgenes}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+barplot_difbnds_DEgenes.h
+```
+
+Type of chromatin rearrangements on differential TAD boundaries for TADs encompassing DE and non-DE genes (ns). *n* is the total number of TADs in each group.
+:::
+
+<br />
+<br />
+
+
+The statistical significance of TAD boundary rearrengement type in each group (associated with DE and non-DE genes) was assesed by the `Pearson's Chi-squared test` (Chi-square goodness of fit test) and `2-sample test for equality of proportions with continuity correction` (two proportions Z test).
+
+
+<br />
+<br />
+
+
+```{r}
+
+tads_de=unlist(df_barplot3[df_barplot3$Gene=="DE",-1])
+tads_ns=unlist(df_barplot3[df_barplot3$Gene=="ns",-1])
+
+difTAD_DEG.chiprop=chisq.test(tads_de, tads_ns)
+difTAD_DEG.chiprop$p.value
+
+difTAD_DEG.zprop=list()
+
+for (i in c("Complex","Merge","Shifted","Split","StrengthChange","other")){
+
+  difTAD_DEG.zprop.i=prop.test(x=c(tads_de[names(tads_de)==i],tads_ns[names(tads_ns)==i]),n=c(n_TADs.DE,n_TADs.ns))
+
+  difTAD_DEG.zprop[[i]]=difTAD_DEG.zprop.i$p.value
+
+  print(paste(i,difTAD_DEG.zprop.i$p.value,sep=" "))
+
+}
+
+difTAD_DEG.zprop.df=do.call(rbind, difTAD_DEG.zprop)
+colnames(difTAD_DEG.zprop.df)=c("p")
+
+```
+
+<br />
+<br />
+
+* Chi-square goodness of fit test, p value = `r difTAD_DEG.chiprop$p.value`.
+
+
+* Two proportions Z test, p values:
+
+
+::: {#tbl-zprop}
+
+```{r}
+#| echo: false
+kbl(difTAD_DEG.zprop.df, row.names = TRUE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+P values from 2-sample test for equality of proportions with continuity correction (two proportions Z test) for proportions of chromatin rearrangement type at TAD boundaries associated with differential and non-differential genes.
+
+:::
+
+<br />
+<br />
+
+
+
+<br />
+<br />
+
+
+#### Overlap of selected TADs (`r txt_string_seltads`) with open chromatin
+
+Open chromatin regions (OCRs) were queried for overlap with `r txt_string_seltads`. 
+The significance was tested by (i) Fisher exact test for sets overlap and
+(ii) permutation test for region association.
+
+<br />
+<br />
+
+```{r}
+#| label: atac-diftad-overlaps
+
+#overlap of up/dn ATAC peaks with dif TADs
+
+#DARs filtered using specificed cutoffs in `data-atac` chunk
+
+#dfs
+#atacseq_res.lec
+#atacseq_res.bec
+
+# Granges objects
+#atac_peaks.up.gr
+#atac_peaks.dn.gr
+
+#all OCRs
+#atacseq_res
+#atac_peaks.gr
+
+
+atac_peaks_up=atacseq_res.lec|>
+  pull(PeakID)
+
+atac_peaks_dn=atacseq_res.bec|>
+  pull(PeakID)
+
+atac_peaks_sig=c(atac_peaks_dn,atac_peaks_up)
+
+
+overlap.atac.difTAD=feature_body_overlap(test_tads.gr=sel_tads.gr,feature.gr=atac_peaks.gr)
+overlap.atac.consTAD=feature_body_overlap(test_tads.gr=all_consTADs.gr,feature.gr=atac_peaks.gr)
+
+
+overlaps.difTADs.atac_up=get_overlaps_sig(genes.all=atac_da$PeakID,
+  genes.sel=atac_peaks_up,
+  overlaps.dif=overlap.atac.difTAD[["genes"]],
+  overlaps.all=overlap.atac.consTAD[["genes"]])
+
+contingency_tab_atac_up=overlaps.difTADs.atac_up[["cont_tab"]]
+p.fisher_atac_up=overlaps.difTADs.atac_up[["p.fisher"]]
+
+overlaps.difTADs.atac_dn=get_overlaps_sig(genes.all=atac_da$PeakID,
+  genes.sel=atac_peaks_dn,
+  overlaps.dif=overlap.atac.difTAD[["genes"]],
+  overlaps.all=overlap.atac.consTAD[["genes"]])
+
+contingency_tab_atac_dn=overlaps.difTADs.atac_dn[["cont_tab"]]
+p.fisher_atac_dn=overlaps.difTADs.atac_dn[["p.fisher"]]
+
+
+overlaps.difTADs.atac_de=get_overlaps_sig(genes.all=atac_da$PeakID,
+  genes.sel=atac_peaks_sig,
+  overlaps.dif=overlap.atac.difTAD[["genes"]],
+  overlaps.all=overlap.atac.consTAD[["genes"]])
+
+contingency_tab_atac_de=overlaps.difTADs.atac_de[["cont_tab"]]
+p.fisher_atac_de=overlaps.difTADs.atac_de[["p.fisher"]]
+
+```
+
+
+<br />
+<br />
+
+<br />
+<br />
+
+Statistical significance of the association of selected TADs: **`r txt_string_seltads`**
+and DA open chromatin regions (OCR body overlapping selected TADs)
+was determined using `Fisher's exact test`.
+
+The contingency tables are listed below.
+
+The p value for overlap significance:
+
+* DARs more accessible in LECs within selected TADs: **p=`r p.fisher_atac_up$p.value`**.
+
+* DARs more accessible in BECs within selected TADs: **p=`r p.fisher_atac_dn$p.value`**.
+
+* all DARs within selected TADs: **p=`r p.fisher_atac_de$p.value`**.
+
+
+<br />
+<br />
+
+::: {#tbl-contingency-dar-lec}
+
+```{r}
+#| echo: false
+kbl(contingency_tab_atac_up, row.names = FALSE)%>%
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+
+Contingency table for OCRs more accessible in LEC within `r txt_string_seltads`.
+:::
+
+<br />
+
+::: {#tbl-contingency-dar-bec}
+
+```{r}
+#| echo: false
+kbl(contingency_tab_atac_dn, row.names = FALSE)%>%
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+
+Contingency table for OCRs more accessible in BEC within `r txt_string_seltads`.
+:::
+
+<br />
+
+::: {#tbl-contingency-dar-de}
+
+```{r}
+#| echo: false
+kbl(contingency_tab_atac_de, row.names = FALSE)%>%
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+
+Contingency table for DAR OCRs within `r txt_string_seltads`.
+:::
+
+<br />
+
+<br />
+<br />
+
+
+The associations between region sets (selected TADs and open chromatin peaks) 
+were evaulated using `permutation tests` (n=`r n_perms` permutations), 
+to address the question: are the ATAC-seq peaks (all, non-DA, LEC and BEC DA) preferentially 
+associated with differential TADs. Additionally, DA chromatin regions were further grouped by their association with DEGs in LEC and BEC, to address the question whether the ATAC peaks 
+preferentially accessible in LEC 
+and associated with differential TADs (TADs selected for this section)
+can be linked to altered gene expression.
+
+These tests were performed jointly, i.e. `set A` (regions corresponding to TADs) was randomised only once and used for all comparisons presented in this table.
+
+
+<br />
+
+The significance of overlaps is summarised in the table below. 
+Raw and corrected p values from the permutation test are listed (n=`r n_perms` permutations) in @tbl-perm-atac. 
+Z score pertains to observed number of overlaps, given the distribution of number of overlaps when the query (`setA`, TADs) is randomised. Please note that z score value depends on number of regions in the query set, hence its value cannot be directly used for comparison of effect size between different tests. 
+**Normalised z score** (z score divided by square root of number of regions in the query set) can be compared between different tets (@Malinverni2023). Values of -log10(adjusted p value) plotted against normalised z score are presented on @fig-perm-atac.
+
+<br />
+
+<br />
+<br />
+
+
+
+
+```{r}
+#| label: atac-diftad-perm
+
+atac_da=atacseq_res|>
+  dplyr::rename(external_gene_name=SYMBOL.closest)|>
+  dplyr::rename(annotation=annotation.closest)
+
+atac_peaks.DEgex=atac_da|>
+  dplyr::filter(external_gene_name%in%DE_rnaseq_d5.sig$X)
+
+atac_peaks.LECgex=atac_da|>
+  dplyr::filter(external_gene_name%in%genes_lec_dpf5.ls)
+
+atac_peaks.BECgex=atac_da|>
+  dplyr::filter(external_gene_name%in%genes_bec_dpf5.ls)
+
+
+
+# ranges
+
+
+atac_peaks.up.gr=atac_peaks.gr|>
+        plyranges::filter(FDR<atac_FDR_CO,logFC>=atac_log2FC_CO)
+
+atac_peaks.dn.gr=atac_peaks.gr|>
+        plyranges::filter(FDR<atac_FDR_CO,logFC<=(-atac_log2FC_CO))
+
+atac_peaks.sig.gr=c(atac_peaks.up.gr,atac_peaks.dn.gr)
+
+atac_peaks.up.DEgex.gr=atac_peaks.up.gr|>
+  plyranges::filter(id%in%atac_peaks.DEgex$PeakID)
+
+atac_peaks.dn.DEgex.gr=atac_peaks.dn.gr|>
+  plyranges::filter(id%in%atac_peaks.DEgex$PeakID)
+
+atac_peaks.up.LECgex.gr=atac_peaks.up.gr|>
+  plyranges::filter(id%in%atac_peaks.LECgex$PeakID)
+
+atac_peaks.dn.BECgex.gr=atac_peaks.dn.gr|>
+  plyranges::filter(id%in%atac_peaks.LECgex$PeakID)
+
+
+# test
+
+tads_peaks.lst=list()
+#tads_peaks.lst[["consTADs"]]=all_consTADs.gr
+tads_peaks.lst[["selTADs"]]=sel_tads.gr
+tads_peaks.lst[["atac_up"]]=atac_peaks.up.gr
+tads_peaks.lst[["atac_dn"]]=atac_peaks.dn.gr
+tads_peaks.lst[["atac_sig"]]=atac_peaks.sig.gr
+tads_peaks.lst[["atac_up_DEgex"]]=atac_peaks.up.DEgex.gr
+tads_peaks.lst[["atac_dn_DEgex"]]=atac_peaks.dn.DEgex.gr
+tads_peaks.lst[["atac_up_LECgex"]]=atac_peaks.up.LECgex.gr
+tads_peaks.lst[["atac_dn_BECgex"]]=atac_peaks.dn.BECgex.gr
+
+set.seed(2357)
+TADs.atac.gex=crosswisePermTest(Alist=tads_peaks.lst, Blist=tads_peaks.lst, sampling=FALSE,
+    gen=lengths_df,ntimes=n_perms,alternative="greater",force.parallel=TRUE, mc.set.seed=FALSE)
+
+
+TADs.atac.gex_perm_df=TADs.atac.gex@multiOverlaps
+atac_tads_gex.res_lst_full=bind_rows(TADs.atac.gex_perm_df, .id="setA")|>
+  dplyr::select(!order.id)|>
+  dplyr::rename(setB=name)|>
+  dplyr::filter(!setA==setB)|>
+  dplyr::select(setA,setB,p_value,adj.p_value,n_regionA,n_regionB,n_overlaps,z_score,norm_zscore,mean_perm_test,sd_perm_test)
+
+
+pertest_atac_dir=file.path(subresdir,"permutation_tests_TADs_ATACseq")
+dir.create(pertest_atac_dir,recursive=TRUE)
+
+
+fname_pref_tads_atac=paste0(pref_seltads,"_ATACpeaks.permtest_regioneReloaded_nperm_",n_perms)
+
+fname_perm_atac=paste0(fname_pref_tads_atac,".tsv")
+save.table(df=atac_tads_gex.res_lst_full,file=fname_perm_atac,dir=pertest_atac_dir)
+
+fname_perm_atac_rds=paste0(fname_pref_tads_atac,".rds")
+fpath_rds=file.path(pertest_atac_dir,fname_perm_atac_rds)
+saveRDS(TADs.atac.gex, file=fpath_rds)
+
+
+atac_tads_gex.res_tbl=atac_tads_gex.res_lst_full|>
+  dplyr::select(setA,setB,n_regionA,n_regionB,n_overlaps,p_value,adj.p_value,z_score,norm_zscore)|>
+  dplyr::filter(!setA==setB)|>
+  dplyr::filter(setA=="consTADs" | setA=="selTADs")|>
+  dplyr::filter(!(setA=="consTADs" & setB=="selTADs")) |> 
+  dplyr::filter(!(setB=="consTADs" & setA=="selTADs"))|>
+  dplyr::mutate_if(is.numeric, format, digits=4,nsmall = 4)|>
+  dplyr::rename(TADs=setA,ATACpeaks_subset=setB,n_TADs=n_regionA,n_ATAC_peaks=n_regionB)
+
+LEC_dark="#109630"
+BEC_dark="#762A83"
+
+scale_col3=c("grey60",BEC_dark,LEC_dark)
+
+
+
+#### 1 plot
+
+atac_tads_gex.res_tbl.sel=atac_tads_gex.res_tbl|>dplyr::filter(TADs=="selTADs")|>
+        dplyr::mutate_at(vars(p_value,adj.p_value,norm_zscore,z_score), as.numeric)|>
+        dplyr::mutate(logPval=-log10(adj.p_value))|>
+        dplyr::mutate(ATAC_peaks=case_when(
+                str_detect(ATACpeaks_subset, regex("atac_up", ignore_case=TRUE)) ~ "LEC",
+                str_detect(ATACpeaks_subset, regex("atac_dn", ignore_case=TRUE)) ~ "BEC",
+                str_detect(ATACpeaks_subset, regex("atac_sig", ignore_case=TRUE)) ~ "all_DA",
+                TRUE ~ NA_character_))|>
+        dplyr::mutate(RNAseq=case_when(
+                str_detect(ATACpeaks_subset, regex("DEgex", ignore_case=TRUE)) ~ "all_DEGs",
+                str_detect(ATACpeaks_subset, regex("LECgex", ignore_case=TRUE)) ~ "LEC_DEGs",
+                str_detect(ATACpeaks_subset, regex("BECgex", ignore_case=TRUE)) ~ "BEC_DEGs",
+                TRUE ~ "no_RNAseq"))
+
+
+TADs_atac.pl=ggplot(atac_tads_gex.res_tbl.sel,aes(x=norm_zscore,y=logPval, color=ATAC_peaks,shape=RNAseq)) +
+        geom_point(size=3)+
+        scale_color_manual(values=scale_col3)+
+        scale_shape_manual(values = c(15,16,17,0))+
+        geom_hline(yintercept=-log10(0.05),color="black",linetype=2)+
+        theme_bw()+
+        theme(aspect.ratio = 1/1.617)+
+        xlab("Normalised Z score\n(permutation test)") +
+        ylab("-log10 (p adjusted)")
+
+
+
+
+fname=paste0("summary_plot.",fname_pref_tads_atac)
+for (devplot in c("pdf","eps")){
+        fname_full=paste(fname,devplot,sep=".")
+        ggsave(plot=TADs_atac.pl, filename=fname_full, path=pertest_atac_dir, device=devplot)
+}
+
+
+## 2 plots
+
+atac_tads_gex.res_tbl.sel.RNA=atac_tads_gex.res_tbl.sel|>
+  dplyr::filter(!RNAseq=="no_RNAseq")
+
+scale_col2=c(BEC_dark,LEC_dark)
+
+
+TADs_atac.pl.rna=ggplot(atac_tads_gex.res_tbl.sel.RNA,aes(x=norm_zscore,y=logPval, color=ATAC_peaks,shape=RNAseq)) +
+        geom_point(size=3)+
+        scale_color_manual(values=scale_col2)+
+        scale_shape_manual(values = c(15,16,17,0))+
+        geom_hline(yintercept=-log10(0.05),color="black",linetype=2)+
+        theme_bw()+
+        theme(aspect.ratio = 1/1.617)+
+        xlab("Normalised Z score\n(permutation test)") +
+        ylab("-log10 (p adjusted)")
+
+
+fname=paste0("summary_plot.GEX",fname_pref_tads_atac)
+for (devplot in c("pdf","eps")){
+        fname_full=paste(fname,devplot,sep=".")
+        ggsave(plot=TADs_atac.pl.rna, filename=fname_full, path=pertest_atac_dir, device=devplot)
+}
+
+
+
+atac_tads_gex.res_tbl.sel.noRNA=atac_tads_gex.res_tbl.sel|>
+  dplyr::filter(RNAseq=="no_RNAseq")
+
+
+TADs_atac.pl.norna=ggplot(atac_tads_gex.res_tbl.sel.noRNA,aes(x=norm_zscore,y=logPval, color=ATAC_peaks)) +
+        geom_point(size=3)+
+        scale_color_manual(values=scale_col3)+
+        scale_shape_manual(values = c(15))+
+        geom_hline(yintercept=-log10(0.05),color="black",linetype=2)+
+        theme_bw()+
+        theme(aspect.ratio = 1/1.617)+
+        xlab("Normalised Z score\n(permutation test)") +
+        ylab("-log10 (p adjusted)")
+
+
+fname=paste0("summary_plot.noGEX",fname_pref_tads_atac)
+for (devplot in c("pdf","eps")){
+        fname_full=paste(fname,devplot,sep=".")
+        ggsave(plot=TADs_atac.pl.norna, filename=fname_full, path=pertest_atac_dir, device=devplot)
+}
+
+
+```
+
+
+
+<br />
+
+<br />
+<br />
+
+
+
+<br />
+<br />
+
+Complete results table was saved as file `r fname_perm_atac`. In that table, `SetA` is randomised and assessed for number of overlaps with `setB`.
+
+
+<br />
+<br />
+
+<br />
+<br />
+
+::: {#tbl-perm-atac}
+
+```{r}
+#| echo: false
+kbl(atac_tads_gex.res_tbl, row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)|>
+row_spec(which(atac_tads_gex.res_tbl$adj.p_value<0.05 & atac_tads_gex.res_tbl$TADs=="selTADs"), bold = T, color = "white", background = "grey50")
+```
+
+Results of permutation tests for overlaps of reproducible and selected TADs (`r txt_string_seltads`) and open chromatin regions. ATAC-seq peaks were grouped into differentially more accessible in LEC or BEC, and additionally annotated to DEGs upregulated in their respective tissue (if prefixed by `prom` the peak was annotated to gene promoter (up to 3kb upstream of TSS)).
+The alternative hypothesis was "greater". Rows with adjusted p values <0.05 are highlighted.
+
+:::
+
+<br />
+<br />
+
+##### Figure EV3 G
+
+<br />
+<br />
+
+**Figure EV3 G**
+
+<br />
+<br />
+
+::: {#fig-perm-atac}
+
+```{r}
+#| echo: false
+
+TADs_atac.pl
+```
+Results of permutation tests for overlaps of reproducible and selected TADs (`r txt_string_seltads`) and open chromatin regions. ATAC-seq peaks were grouped into differentially more accessible in LEC or BEC, and additionally annotated to DEGs upregulated in their respective tissue.
+The significance of these overlaps was assessed by permutation tests, where TAD regions were randomised. The horizontal line represents significance cutoff p=0.05.
+:::
+
+<br />
+<br />
+
+
+In addition, the plot on previous figure was split into two, based on using gene expression differences in ATAC peak selection.
+
+<br />
+<br />
+
+
+::: {#fig-perm-atac2}
+
+```{r}
+#| echo: false
+#| layout-ncol: 2
+#| fig-cap: 
+#|   - "OCR selection with gene expression taken into account"
+#|   - "OCR selection without gene expression taken into account"
+
+
+TADs_atac.pl.rna
+
+TADs_atac.pl.norna
+
+```
+Results of permutation tests for overlaps of reproducible and selected TADs (`r txt_string_seltads`) and open chromatin regions. ATAC-seq peaks were grouped into differentially more accessible in LEC or BEC, and additionally annotated to DEGs upregulated in their respective tissue.
+The significance of these overlaps was assessed by permutation tests, where TAD regions were randomised. The horizontal line represents significance cutoff p=0.05.
+:::
+
+<br />
+<br />
+
+
+<br />
+
+<br />
+<br />
+
+
+
+<br />
+
+<br />
+<br />
+
+
+
+

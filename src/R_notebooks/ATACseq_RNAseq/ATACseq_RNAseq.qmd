@@ -1,0 +1,455 @@
+---
+title: Chromatin landscape in zebrafish lymphatic system development <br> 
+subtitle: ATAC-seq and RNAseq<br>data set intersection, visualisations<br>  NBIS 5931
+author: Agata Smialowska
+format:
+  html:
+    theme: cosmo
+    mainfont: Georgia
+    fontcolor: "#404040"
+    highlight-style: pygments
+    html-math-method: katex
+    code-fold: true
+    number-sections: true
+    toc: true
+    toc-title: Contents
+    toc-location: left
+    toc-expand: true
+    toc-depth: 4
+    toc-float:
+      collapsed: no
+    fig-width: 8
+    fig-height: 8
+    css: "style.css"
+    code-block-bg: "grey80"
+    code-block-border-left: true
+    embed-resources: true
+engine: knitr
+date: today
+bibliography: references.bib
+---
+
+
+Analyses for manuscript: *Panara et al, 2026*.
+
+
+<br />
+<br />
+
+```{r}
+#| echo: FALSE
+htmltools::img(src = knitr::image_uri(file.path("logos", "nbislogo-blue-txt.png")), 
+               alt = 'NBISlogo', 
+               style = 'position:absolute; top:0; left:0; padding:10px; width: 10vw')
+htmltools::img(src = knitr::image_uri(file.path("logos", "SLLNew.png")), 
+               alt = 'SLLlogo', 
+              style = 'position:absolute; top:0; right:0; padding:10px; height: 5vw')
+```
+
+
+```{r}
+#| echo: FALSE
+#| include: FALSE
+#| cache: FALSE
+
+library(knitr)
+
+
+knitr::opts_chunk$set(echo = TRUE, 
+                      collapse = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      include=TRUE,
+                      out.width = "80%")
+
+options(knitr.duplicate.label = "allow")
+
+script_pth="./src/ATACseq-RNAseq-intersection.R"
+knitr::read_chunk(script_pth)
+```
+
+<br />
+<br />
+<br />
+
+Sample naming convention when referring to replicates:
+
+* pp - prox1 positive, i.e. LEC 
+
+* no prefix - BEC
+
+
+<br />
+<br />
+
+
+# Plots
+
+
+* list of (DE) genes associated with DA chromatin (list only) (Fig 3B) **DONE**
+
+* ATACseq signal in peaks annotated to top 50 DEGs - with RNAseq level annot (heatmap) (Fig EV3 b) **DONE**
+
+* ATACseq DA volcano plots with LEC and BEC genes coloured (Fig 3A) **DONE**
+
+
+
+
+
+
+
+<br />
+<br />
+
+# Environment
+
+
+
+```{r}
+#| label: prep-env
+```
+
+
+
+```{r}
+#| label: dirs
+```
+
+
+
+```{r}
+#| label: functions
+```
+
+<br />
+<br />
+
+## Cutoffs used in this report
+
+```{r}
+#| label: cutoffs
+```
+
+<br />
+<br />
+
+RNA-seq:
+
+* log2FC `r rnaseq_log2FC_CO`
+* fraction cells expressing `r rnaseq_pct_expr_CO`
+* p adjusted `r rnaseq_padj_CO`
+
+
+<br />
+<br />
+
+ATAC-seq:
+
+
+* log2FC `r atac_lFC_CO` **This is different to the analysis in `ATACseq-DA` notebook where no size effect cutoff was used**
+
+* FDR `r atac_FDR_CO`
+
+ 
+
+<br />
+<br />
+
+# Annotations
+
+
+
+```{r}
+#| label: annots
+```
+
+<br />
+<br />
+
+# Data
+
+
+<br />
+
+RNA-seq:
+
+```{r}
+#| label: data-rnaseq
+```
+
+<br />
+
+
+ATAC-seq:
+
+
+```{r}
+#| label:  data-atacseq
+```
+
+<br />
+<br />
+
+## Summary of ATAC-seq data
+
+*(For reference)*
+
+Number of peaks in DA analysis: `r nrow(atacseq_res)`
+
+
+
+<br />
+<br />
+
+# Results
+
+
+<br />
+<br />
+
+
+## ATAC-seq DA
+
+
+```{r}
+#| label:  data-atacseq
+```
+
+<br />
+
+**This is different to the DA peaks presented in notebook ATACseq-DA**
+
+<br />
+
+*(For reference)*
+
+Number of DA peaks under cutoffs used in this report:
+
+* DA open in LEC: `r nrow(atacseq_res.lec)`
+
+* DA open in BEC: `r nrow(atacseq_res.bec)`
+
+
+
+<br />
+<br />
+
+### Visualisation of DARs with RNAseq based labeling
+
+<br />
+<br />
+
+
+#### Figure 3A
+
+
+```{r}
+#| label: atacseq-volcano
+```
+
+
+
+
+**Figure 3A**
+
+<br />
+
+::: {#fig-atac-volcano}
+
+```{r}
+#| echo: false
+plot_grid(volcano5_lec,volcano5_bec)
+```
+Volcano plot of ATAC-seq peaks coloured by the DE status of their closest feature in scRNAseq at 5dpf.
+:::
+
+<br />
+
+
+
+#### Figure EV3 B
+
+
+
+```{r}
+#| label: atacseq-hm-DEGs
+```
+
+
+
+
+**Figure EV3 B**
+
+<br />
+
+::: {#fig-atac-hm-DEGs}
+
+```{r}
+#| echo: false
+hm.da_degs
+```
+
+Heatmap of ATAC signal in peaks annotated to promoters of DEGs at 5 dpf.
+:::
+
+<br />
+
+
+
+<br />
+<br />
+
+## Data set intersection
+
+
+### Data set summary
+
+Number of peaks, and genes annotated as their closest feature, split by peak categories is summarised in table below.
+
+
+
+```{r}
+#| label: atac-peak-gene-summary
+```
+
+<br />
+<br />
+
+
+**Number of genes annotated to peaks differs from the original analysis** probably due to annotation changes. The original results were:
+
+* n=28032 peaks were significant DA, corresponding to 12839 genes.
+
+* n=12016 peaks were preferentially open in LEC, corresponding to 5388 genes.
+
+* n=16016 peaks were preferentially open in BEC, corresponding to 9814 genes.
+
+
+<br />
+<br />
+
+<br />
+
+::: {#tbl-atac-numbers}
+
+```{r}
+#| echo: false
+
+kbl(peaks_stats)|>kable_styling(bootstrap_options = c("striped", "hover"))
+```
+Number of peaks, and genes annotated as their closest feature.
+:::
+
+<br />
+<br />
+<br />
+
+```{r}
+#| label: rnaseq-gene-summary
+```
+
+
+Summary of DE genes in RNA-seq data:
+
+* n=`r nrow(DE_rnaseq_d5.sig)` genes were DE at indicated cutoffs;
+
+* n=`r nrow(rnaseq_fc.d5.lec)` genes were upregulated in LEC;
+
+* n=`r nrow(rnaseq_fc.d5.bec)` genes were upregulated in BEC; **this value was incorrect in the previous version**
+
+<br />
+<br />
+
+
+### Intersection of ATAC-seq and RNA-seq
+
+
+
+```{r}
+#| label: atac-rna-intersection
+```
+
+<br />
+
+::: {#tbl-atac-rnaseq-numbers}
+
+```{r}
+#| echo: false
+
+kbl(table_gene_counts)|>kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+Gene numbers up/down regulated and DA in LEC and BEC.
+:::
+
+<br />
+<br />
+<br />
+
+
+Gene fractions up/down regulated and DA in LEC and BEC are summarised in the following table.
+
+
+<br />
+
+::: {#tbl-atac-rnaseq-numbers}
+
+```{r}
+#| echo: false
+
+kbl(table_gene_fractions)|>kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+```
+Gene fractions up/down regulated and DA in LEC and BEC.
+:::
+
+<br />
+<br />
+<br />
+
+
+### Lists for heatmaps of DE genes associated with DA chromatin
+
+This section pertains to heatmaps “DE genes associated with DA chromatin” (Figure 3 A).
+
+Selection:
+
+* peaks DA in LEC annotated to LEC DE gene;
+
+* all peaks whose DA log2FC > 1;
+
+* applying additional log2CPM cutoff of 2, to select strongest ATAC signal;
+
+* top 50 genes by DA logFC (largest log2FC for genes with multiple DA peaks)
+
+
+<br />
+<br />
+
+
+#### List for Figure 3B
+
+<br />
+
+
+```{r}
+#| label: list-DEGs-topDARs
+```
+
+
+Selected genes:
+
+`r genes.peaks_LEC.rnaseq_LEC.top50[order(genes.peaks_LEC.rnaseq_LEC.top50)]`
+
+
+
+
+<br />
+<br />
+
+# Session Info
+
+
+```{r}
+#| label: session-info
+sessionInfo()
+```
+

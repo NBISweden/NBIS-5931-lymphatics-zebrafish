@@ -1,0 +1,1203 @@
+---
+title: Chromatin landscape in zebrafish lymphatic system development <br> 
+subtitle: HiC<br>TADs, differential boundaries, loops; ATAC-seq and RNA-seq intersection; comparison to published data<br>  NBIS 5931
+author: Agata Smialowska
+format:
+  html:
+    theme: cosmo
+    mainfont: Georgia
+    fontcolor: "#404040"
+    highlight-style: pygments
+    html-math-method: katex
+    code-fold: true
+    number-sections: true
+    toc: true
+    toc-title: Contents
+    toc-location: left
+    toc-expand: true
+    toc-depth: 4
+    toc-float:
+      collapsed: no
+    fig-width: 8
+    fig-height: 8
+    css: "style.css"
+    code-block-bg: "grey80"
+    code-block-border-left: true
+    embed-resources: true
+engine: knitr
+date: today
+bibliography: references.bib
+---
+
+
+Analyses for manuscript: *Panara et al, 2026*.
+
+
+<br />
+<br />
+
+```{r}
+#| echo: FALSE
+htmltools::img(src = knitr::image_uri(file.path("logos", "nbislogo-blue-txt.png")), 
+               alt = 'NBISlogo', 
+               style = 'position:absolute; top:0; left:0; padding:10px; width: 10vw')
+htmltools::img(src = knitr::image_uri(file.path("logos", "SLLNew.png")), 
+               alt = 'SLLlogo', 
+              style = 'position:absolute; top:0; right:0; padding:10px; height: 5vw')
+```
+
+
+```{r}
+#| echo: FALSE
+#| include: FALSE
+#| cache: FALSE
+
+library(knitr)
+
+
+knitr::opts_chunk$set(echo = TRUE, 
+                      collapse = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      include=TRUE,
+                      out.width = "80%")
+
+options(knitr.duplicate.label = "allow")
+
+script_pth="./src/HiC-ATACseq-RNAseq.R"
+knitr::read_chunk(script_pth)
+```
+
+<br />
+<br />
+<br />
+
+Previously used _consensus TADs_ was replaced with ***reproducible TADs*** to avoid confusion of consensus with "not differential between tissues".
+
+
+
+
+<br />
+<br />
+
+
+
+# Plots
+
+
+* TAD length unfiltered and consensus=reproducible (Fig 1 B,C) **DONE**
+
+* Diff TAD boundaries pie chart (Fig 1 C) **DONE**
+
+* Euler diagram of dif TADs in LEC / BEC (Fig 1 F) **DONE**
+
+* CTCF association with TAD boundaries (Fig 1 G) **DONE**
+
+* Venn of unfiltered and consensus=reproducible TADs (Fig EV 1 A,B) **DONE**
+
+* TAD length with Franke and Yang data (Fig EV 1 C) **DONE**
+
+* DE genes and dif TADs (Fig 2 D) **DONE**
+
+* Overlap of difTADs with open chromatin (Fig EV 3b) **DONE**
+
+* Venn HiC loop number (Fig A3) **DONE**
+
+* Histogram HiC loop length (Fig A3) **DONE**
+
+* list of DE genes close to changing TAD boundaries **DONE**
+
+
+
+
+
+<br />
+<br />
+
+
+
+# Environment
+
+
+
+```{r}
+#| label: prep-env
+```
+
+
+
+```{r}
+#| label: dirs
+```
+
+
+
+```{r}
+#| label: functions
+```
+
+
+```{r}
+#| label: feature-TAD-overlap-cutoffs
+```
+
+<br />
+<br />
+
+# Methods
+
+* ATAC-seq DA was performed using[@edger] following the TMM scaling [@TMM];
+
+* RNA-seq analysis is as described at Gloger at al, 2026 (in preparation);
+
+* HiC data was processed and summarised using Juicer 1.6 [@Durand2016];
+
+* Loops were detected using GPU HICCUPS from Juicer tools [@Durand2016];
+
+* TADs were detected using OnTAD [@An_2019];
+
+* Differences at TAD boundaries were detected using TADCompare [@TADcompare];
+
+* Interval overlap significance by permutation tests was assesed using regioneReloaded [@Malinverni2023];
+
+
+<br />
+<br />
+
+
+# Annotations {#sec-data-genelists}
+
+Gene models:
+
+<br />
+<br />
+
+```{r}
+#| label: gene-models
+```
+
+<br />
+<br />
+
+Vascular markers, LEC and BEC DE gene lists:
+
+<br />
+<br />
+
+```{r}
+#| label: gene-lists
+```
+
+<br />
+<br />
+
+<br />
+<br />
+
+```{r}
+#| label: gene-models
+```
+
+<br />
+<br />
+
+
+
+<br />
+
+**Genes included in the overlaps are listed in the code chunks below.**
+
+<br />
+
+* Vascular genes were from a list obtained from Virginia (4th March 2025);
+
+```{r}
+#| label: gene-lists-vascular
+
+genes_vasc_incl
+
+```
+
+
+
+
+* DE genes as sent my Marleen (29th October 2024) (files: `fullmarkers_5dpf.csv` and `fullmarkers_7dpf.csv`);
+
+These cutoffs were used for analyses included in this manuscript in e.g. heatmaps presenting expression of selected genes
+(the same cutoffs as for ATAC peak overlaps):
+
+  * log2FC: `r rnaseq_log2FC_CO`
+  * adjusted p value:  `r rnaseq_padj_CO`
+  * fraction of cells expressing per cluster: `r rnaseq_pct_expr_CO`
+
+
+* scRNA-seq genes upregulated in LEC at 5 dpf:
+
+
+```{r}
+#| label: gene-lists-da-lec
+
+genes_lec_incl
+
+```
+
+<br />
+
+* scRNA-seq genes upregulated in BEC at 5 dpf:
+
+
+```{r}
+#| label: gene-lists-da-bec
+
+genes_bec_incl
+
+```
+
+
+<br />
+<br />
+
+<br />
+<br />
+
+# Data
+
+
+## Tissue level TADs
+
+
+```{r}
+#| label: onTAD-functions
+```
+
+
+
+
+
+```{r}
+#| label: TADcompare-functions
+```
+
+
+
+
+
+```{r}
+#| label: data-ontad
+```
+
+<br />
+<br />
+
+
+
+## Reproducible TAD boundaries {#sec-cons-megatadcompare}
+
+
+Reproducible TAD boundaries by `TADcompare`:
+
+* TADcompare using sample matrices (TADs called on mega-maps; comparison on sample matrices)
+
+
+
+```{r}
+#| label: data-TADcompare-megaTADs
+```
+
+
+<br />
+<br />
+
+## Differential TAD boundaries
+
+
+* Differential TAD boundaries between LEC and BEC (TADs called on mega-maps; comparison on mega-maps):
+
+
+```{r}
+#| label: data-tadcompare-wins
+```
+
+
+<br />
+<br />
+
+
+
+
+## HiC loops
+
+
+```{r}
+#| label: data-loops
+```
+
+
+<br />
+<br />
+
+
+
+## ATAC-seq data
+
+
+ATAC-seq DA results (TMM scaling, paired design for comparisons):
+
+
+```{r}
+#| label: data-atac
+```
+
+
+DA ATAC-seq peaks:
+
+
+* log2FC `r atac_lFC_CO`
+* FDR `r atac_FDR_CO`
+
+
+<br />
+<br />
+
+
+## Published data
+
+### TADs
+
+
+Published TADs:
+
+* [@Yang2020]
+
+* [@Franke2021]
+
+
+```{r}
+#| label: published_TADs
+```
+
+
+<br />
+<br />
+
+### CTCF occupancy
+
+Data from [@Franke2021] (GSE156096).
+
+
+```{r}
+#| label: CTCF-data
+```
+
+<br />
+<br />
+
+
+# Results
+
+<br />
+<br />
+
+
+## Chromatin loops
+
+
+Chromatin loops unique to each tissue and shared between tissues are sumamrised below.
+
+```{r}
+#| label: hic-loops-summary
+```
+
+
+
+
+### Figure A3 A
+
+**Figure A3 A**
+
+
+<br />
+
+
+::: {#fig-loop-venn}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+venn.overlaps.loops
+```
+
+Summary of chromatin loops in LEC and BEC.
+:::
+
+<br />
+
+<br />
+
+
+::: {#fig-loop-hist}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+hist_loops.1
+
+```
+
+Length distribution of LEC and BEC chromatin loops.
+:::
+
+<br />
+
+<br />
+<br />
+
+
+## Reproducible TADs
+
+
+
+
+```{r}
+#| label: TADs-bnds-functions
+```
+
+
+**Reproducible TADs** are TADs delimited by two **reproducible boundaries** (i.e. boundaries not differential in replicates, by `TADcompare`).
+
+
+
+```{r}
+#| label: TADcompare-cons-megaTADs
+```
+
+
+```{r}
+#| label: TADcompare-cons-megaTADs-combine
+```
+
+
+```{r}
+#| label: TADcompare-cons-megaTADs-fmt
+```
+
+<br />
+<br />
+
+::: {#tbl-TAD-counts}
+
+```{r}
+#| echo: false
+
+
+kbl(TAD_cons_summary_df, row.names = TRUE)%>%
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+
+```
+
+Summary of unfiltered and reproducible TADs (**`r txt_string1`**).
+:::
+
+<br />
+<br />
+
+### Overlaps of LEC and BEC TADs
+
+
+
+TADs in LEC and BEC are summarised on Venn diagramms below. 
+
+These plots are derived from comparisons of TAD boundary coordinates of unfiltered and reproducible TADs, as detected by OnTAD in LEC and BEC (using merged replicates i.e. megamap matrices).
+TAD boundaries by exact coordinate match and within wiggle room of n=`r ontad_wiggle_bins` for each TAD were compared between TADs detected in LEC and BEC.
+
+No numerical analysis was performed to determine whether the boundary score is differential in LEC vs BEC (such plots are presented and discussed following sections, Figure @fig-dif-tads-euler).
+
+<br />
+
+
+* **reproducible TADs** are TADs delimited by both boundaries assigned reproducible status (i.e. no-differential) when comparing matrices of replicates.
+
+* When considering TADs within set distance of **"wiggle bins"** in LEC and BEC, the distance was **`r ontad_wiggle_bins` bins** (1 bin = 10 kb).
+
+
+
+<br />
+<br />
+
+```{r}
+#| label: smpl-tads-venn
+```
+
+
+<br />
+<br />
+
+::: {#tbl-TAD-overlaps}
+
+```{r}
+#| echo: false
+
+
+kbl(TAD_overlap_summary_df[-1,], row.names = TRUE)%>%
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+
+```
+
+Summary of overlaps between unfiltered and reproducible TADs, boundaries identical and within wiggle room (n=`r ontad_wiggle_bins` bins).
+:::
+
+
+
+
+<br />
+<br />
+
+
+#### Figure EV1 A, B
+
+<br />
+<br />
+
+
+**Figure EV1 A** (panel D)
+
+<br />
+
+
+::: {#fig-smpl-tads-venn-ident-unfilt}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+cowplot::plot_grid(venn.unfilt.ident.1,venn.unfilt.ident,venn.unfilt.wg.1,venn.unfilt.wg,
+       ncol=2, labels=c("A","B","C","D"))
+
+```
+
+Summary of **unfiltered TADs** in LEC and BEC. Included are TADs with identical boundaries, by coordinate comparison (A,B) and TADs with boundaries within wiggle room (n bins = `r ontad_wiggle_bins`) (C,D). A, C - level 1 TADs; B, D - all TADs.
+:::
+
+<br />
+
+**Figure EV1 B** (panel D)
+
+
+<br />
+
+::: {#fig-smpl-tads-venn-ident-cons}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+cowplot::plot_grid(venn.cons.ident.1,venn.cons.ident,venn.cons.wg.1,venn.cons.wg,
+       ncol=2, labels=c("A","B","C","D"))
+
+```
+
+Summary of **reproducible TADs** in LEC and BEC. Included are TADs with identical boundaries, by coordinate comparison (A, B) and TADs with boundaries within wiggle room (n bins = `r ontad_wiggle_bins`) (C, D). A, C - level 1 TADs; B, D - all TADs.
+:::
+
+<br />
+
+
+
+
+
+### Length distribution of LEC and BEC TADs
+
+
+Length distribution of unfiltered and consensus TADs was compared on following figures, to confirm no bias was introduced by reproducible TAD (consensus) filtering.
+
+<br />
+<br />
+<br />
+
+Length comparison of level 1 TADs (i.e. outermost TADs) is presented below.
+
+<br />
+<br />
+
+
+```{r}
+#| label: TAD-len-hist
+```
+
+
+<br />
+<br />
+
+::: {#fig-tad-length-hist-smpls-unfilt}
+
+```{r}
+#| echo: false
+
+theme_set(theme_cowplot(font_size = 15))
+
+cowplot::plot_grid(plotlist=plot_figure1,
+    ncol=2, labels=LETTERS[1:length(plot_figure1)])
+```
+
+TAD length in LEC and BEC (**unfiltered lvl 1 TADs**). Top row - full scale, bottom row - scale capped at 3.5 Mbp. 
+:::
+
+<br />
+<br />
+
+<br />
+<br />
+
+::: {#fig-tad-length-hist-smpls-unfilt2}
+
+```{r}
+#| echo: false
+
+theme_set(theme_cowplot(font_size = 15))
+
+cowplot::plot_grid(plotlist=plot_figure2,
+    ncol=2, labels=LETTERS[1:length(plot_figure2)])
+```
+
+TAD length in LEC and BEC (**unfiltered TADs**). Top row - full scale, bottom row - scale capped at 3.5 Mbp. 
+:::
+
+<br />
+<br />
+
+<br />
+
+::: {#fig-tad-length-hist-smpls-cons}
+
+```{r}
+#| echo: false
+
+theme_set(theme_cowplot(font_size = 15))
+
+cowplot::plot_grid(plotlist=plot_figure3,
+    ncol=2, labels=LETTERS[1:length(plot_figure3)])
+```
+
+TAD length in LEC and BEC (**reproducible lvl 1 TADs**). Top row - full scale, bottom row - scale capped at 3.5 Mbp. 
+:::
+
+<br />
+<br />
+
+::: {#fig-tad-length-hist-smpls-cons2}
+
+```{r}
+#| echo: false
+#| cache: false
+
+theme_set(theme_cowplot(font_size = 15))
+
+cowplot::plot_grid(plotlist=plot_figure4,
+    ncol=2, labels=LETTERS[1:length(plot_figure4)])
+```
+
+TAD length in LEC and BEC (**reproducible**). Top row - full scale, bottom row - scale capped at 3.5 Mbp. 
+:::
+
+<br />
+
+#### Figure 1 B,C
+
+<br />
+<br />
+
+**Figure 1 B,C**
+
+<br />
+<br />
+
+
+::: {#fig-tad-length-hist-smpls-cons-superimposed}
+
+```{r}
+#| echo: false
+#| cache: false
+
+theme_set(theme_cowplot(font_size = 15))
+
+cowplot::plot_grid(plotlist=hist_LEC_BEC.cons,
+    ncol=2, labels=LETTERS[1:length(hist_LEC_BEC.cons)])
+```
+
+TAD length in LEC and BEC (**reproducible**). Top row - full scale, bottom row - scale capped at 3.5 Mbp. 
+:::
+
+<br />
+
+### Length distribution overlap with published TADs
+
+
+Length of TADs outermost in the hierarchy (level 1) is presented on the histograms below, 
+superimposed on length distribution of TADs in published data ([@Yang2020,@Franke2021]).
+
+<br />
+
+Length of TADs detected in LEC and BEC were compared to published data:
+
+* Yang 2020: brain
+
+* Franke 2021: 24h
+
+
+<br />
+
+
+```{r}
+#| label: TAD-len-hist-pub
+```
+
+
+<br />
+
+#### Figure EV1 A, B
+
+<br />
+<br />
+
+
+**Figure EV1 C** (panel D)
+
+::: {#fig-tad-length-hist-pub}
+
+```{r}
+#| echo: false
+
+theme_set(theme_cowplot(font_size = 15))
+
+cowplot::plot_grid(plotlist=plot_figure3,
+    ncol=2, labels=LETTERS[1:length(plot_figure3)])
+```
+
+TAD length in LEC and BEC (**lvl 1 TADs**) superimposed on on length distribution of TADs from published data. Top row (A,B) - unfiltered TADs; bottom row (C,D) - consensus TADs. A,C - full scale, B,D - scale capped at 3.5 Mbp. 
+:::
+
+
+
+<br />
+<br />
+
+
+
+
+
+
+
+
+## Differential TADs
+
+Only reproducible TADs were considered in this and the following sections.
+
+
+```{r}
+#| label: diff-TADs-TADcompare
+```
+
+
+### Summary of differential TADs and boundaries
+
+
+
+```{r}
+#| label: diff-bnds-TADcompare
+```
+
+
+<br />
+<br />
+
+
+TADs < `r tad_len_CO_bins` bins were filtered out from the differential TAD analyses:
+
+* LEC: `r nrow(tads_LEC.cons.flt)`
+
+* BEC: `r nrow(tads_BEC.cons.flt)`
+
+<br />
+
+Boundaries delimiting reproducible TADs:
+
+* Reproducible boundaries: `r length(cons_bnds)`
+
+<br />
+
+* Reproducible boundaries in LEC vs BEC comparison n=`r nrow(bnds_gap_scores)` (boundaries with Gap_Score output by TADCompare)
+
+
+
+
+<br />
+
+Reproducible TADs were stratified by length prior to assigining the differential boundary status, as summarised in the table below (@tbl-difTAD-bounds). For boundaries with Gap_Score passing the cutoff for differential boundary in multiple summarising windows, the windows stratum corresponding to the largest absolute Gap_Score was assigned for summarisation.
+
+<br />
+<br />
+
+
+* Differential boundaries: `r length(unique(lec_bec_difbnds.df.final$bnd_id))`
+
+
+::: {#tbl-difTAD-bounds}
+
+```{r}
+#| echo: false
+
+kbl(dif_bnds_by_win, row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)
+
+```
+
+Summary of differential TAD boundaries (TADCompare, stratified by contact summarising window of the corresponding TAD). 
+:::
+
+<br />
+<br />
+
+TADs delimited by at least one differential boundary were designated **differential TADs**.
+
+
+
+<br />
+
+* all reproducibles differential TADs, by coordinates: n=`r length(unique(cons_tads.dif.combined$tad_id))`
+
+<br />
+<br />
+
+
+#### Figure 1 F
+
+<br />
+<br />
+
+**Figure 1 F**
+
+<br />
+<br />
+
+Overlaps of differential TADs in the context of sample identity are shown on Figure @fig-dif-tads-euler.
+
+
+
+```{r}
+#| label: difTADs-euler
+```
+
+
+
+<br />
+
+::: {#fig-dif-tads-euler}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+cowplot::plot_grid(euler.cons.id,euler.cons.wg,
+       ncol=2, labels=c("A","B"))
+
+```
+
+Overlap of **differential reproducible** TADs in LEC and BEC. Included are TADs with identical boundaries, by coordinate comparison (A) and TADs with boundaries within wiggle room (n bins = `r ontad_wiggle_bins`) (B).
+:::
+
+<br />
+
+#### Summary of differential boundaries, by type
+
+
+**Differential boundaries** in LEC vs. BEC are summarised on the pie chart (@fig-dif-tads-pie). 
+
+These boundaries were assigned status "differential" based on their boundary score as calculated by `TADcompare`. Only reproducible boundaries are summarised.
+
+Reproducible boundaries are boundaries delimiting consensus TADs.
+
+Please note the counts on this pie chart are placed correcly in their corresponding chunks, except for type "na" - this label should be moved manually when assembling the figure.
+
+The counts per differential boundary type can be confirmed at the bottom of the code chunks below. 
+
+```{r}
+#| label: diff-bnds-pie
+```
+
+##### Figure 1 E
+
+<br />
+<br />
+
+**Figure 1 E**
+
+<br />
+
+::: {#fig-dif-tads-pie}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+pie_cons
+```
+
+Summary of the types of differential boundaries in LEC vs. BEC. Boundaries of consensus TADs are presented.
+:::
+
+
+
+
+<br />
+<br />
+
+<br />
+<br />
+<br />
+<br />
+
+
+### Annotation of differential TAD boundaries with overlapping genes
+
+Differential TAD boundaries of reproducible TADs are described in this section.
+
+**Genes with TSS region (3k up and downstream of their TSS) withn 50kb (5 matrix bins at resolution used for these analyses)** are listed in the table below, 
+together with the distances to differential TAD boundary (`0` indicates overlap).
+
+Ensembl gene IDs were converted to symbol gene IDs using Ensembl / Biomart (object `drer11Db`, details in code chunk in section @sec-data-genelists).
+
+<br />
+<br />
+
+
+```{r}
+#| label: annot-difbnds-TSS
+```
+
+
+
+
+
+::: {#tbl-difboundaries-geneannot}
+
+```{r}
+#| echo: false
+
+tablabel="Table"
+capt=paste0("Summary of TAD boundaries classified as differential in comparison LEC vs. BEC (",txt_string1 , "). Genes with TSS region (3kb) within 50kb flanking region are listed. The order of genes and distances is preserved. Boundary_ID is chromosome and the start coordinate of the differential boundary.")
+
+DT::datatable(dif_boundary_all.annot.tbl, rownames = FALSE, caption=capt) |>
+DT::formatSignif(columns=c('Gap_Score'), digits=4)
+
+```
+
+Genes with TSS within 50 kb distance of differential boundaries. Please note that if the closest gene is placed within the 50kb distance of the differential boundary, the other flanking gene is also reported, regardless of its distance, thus confirming the distance in the last column is necessary for drawing conclusions (e.g boundary 2_52330000). NA means no gene was found within set distance (e.g. boundary 11_10210000). 
+:::
+
+
+
+
+<br />
+
+Complete table pertaining to differential TAD boundaries and their overlapping and flanking genes is saved in file **`r fname`**.
+
+
+<br />
+<br />
+
+
+### Association of differential boundaries with other features
+
+<br />
+<br />
+
+#### CTCF occupancy
+
+
+
+<br />
+
+
+```{r}
+#| label: difboundaries-overlaps-fcn
+```
+<br />
+
+The associations between region sets: all **reproducible** TAD boundaries, and **differential** reproducible TAD boundaries (which are a subset of "all reproducible") were evaulated using permutation tests, to address the question: are the CTCF ChIP-seq peaks associated with selected TAD boundaries. 
+
+This section was produced using an extended version of the original R package for positional associations of regions (@Malinverni2023). This version performes multiple tests on lists of regions
+utilising the same randomised region set for calculation of the expected distribution, and it outputs p values adjusted for multiple testing (Benjamini-Hochberg method).
+
+<br />
+
+Boundaries were stratified into three groups: level 1 - delimiting the outermost TADs, levels 2 and 3 - delimiting inner TADs (minimum TAD level 2 or 3) and level 4 - deeper in the TAD hierarchy, delimiting TADs of level 4 or more. These boundaries were tested for overlaps with CTCF occupancy at 48h. 
+
+<br />
+
+**The expectation is that the association between TAD boundaries and CTCF occupancy is significant**. It is worth noting that the CTCF occupancy at 48h marks boundaries formed *at that time point*, corroborating the hypothesis that newly formed TAD boundaries (i.e. sites not associated with CTCF occupancy at 48h), are implicated in LEC fate specification.
+
+
+<br />
+
+```{r}
+#| label: difbnds-overlaps-ctcf
+```
+
+
+
+<br />
+<br />
+
+
+
+The significance of overlaps is summarised in the table below. 
+Raw and corrected p values from the permutation test are listed (n=`r n_perms` permutations) in @tbl-perm-ctcf. 
+Z score pertains to observed number of overlaps, given the distribution of number of overlaps when the query (`setA`, TAD boundaries) is randomised. Please note that z score value depends on number of regions in the query set, hence its value cannot be directly used for comparison of effect size between different tests. 
+**Normalised z score** (z score divided by square root of number of regions in the query set) can be compared between different tets (@Malinverni2023). Values of -log10(adjusted p value) plotted against normalised z score are presented on @fig-perm-ctcf.
+
+<br />
+<br />
+
+Complete results table was saved as file `r fname_perm_ctcf`. In that table, `SetA` is randomised and assessed for number of overlaps with `setB`.
+
+<br />
+<br />
+
+
+::: {#tbl-perm-ctcf}
+
+```{r}
+#| echo: false
+kbl(bnds.ctcf48_perm_res_tbl, row.names = FALSE)|>
+kable_styling(bootstrap_options = c("striped", "hover"),full_width = FALSE)|>
+row_spec(which(bnds.ctcf48_perm_res_tbl$adj.p_value>0.05), bold = T, color = "white", background = "grey50")
+
+```
+
+Results of permutation tests for overlaps of all and differential TAD boundaries with CTCF occupancy at 48h from [@Franke2021]. Only reproducible TAD boundaries were queried. The alternative hypothesis was "greater". Rows with adjusted p values >0.05 are highlighted.
+
+:::
+
+<br />
+<br />
+
+##### Figure 1 G
+
+<br />
+<br />
+
+
+**Figure 1 G**
+
+
+::: {#fig-perm-ctcf}
+
+```{r}
+#| echo: false
+
+bnds_ctcf48.pl
+```
+Results of permutation tests for overlaps of TAD boundaries and CTCF occupancy at 48h from @Franke2021. All reproducible and differential reproducible boundaries were stratified by TAD level they delimit into theree groups: 1 - outer-most TADs, 2-3 - intermediate inner TADs, and 4 - TADs deeper in hierarchy (represented by colour intensity) and significance of their overlaps with CTCF peaks was assessed by permutation tests. The horizontal line represents significance cutoff p=0.05.
+:::
+
+<br />
+<br />
+
+
+### Differential TADs
+
+This section summarises overlaps of **differential TADs** (TADs delimited by at least one differential boundary) with annotated features (genes), open chromatin regions (OCR, ATAC-seq peaks) and CTCF occupancy.
+
+TAD sample identity was assigned based on **wiggle room TADs**.
+
+<br />
+<br />
+
+```{r}
+#| label: diffTADs-overlaps-fcn
+```
+
+
+<br />
+<br />
+
+```{r}
+#| label: diffTADs-foroverlaps
+```
+
+
+<br />
+<br />
+
+**Output files**
+Files output in this section are saved in directory *`r subresdir_name`*.
+
+
+
+<br />
+<br />
+
+
+```{r, child='src/5931_TAD-overlaps.v1.2.qmd'}
+
+```
+
+
+
+<br />
+<br />
+
+
+
+<br />
+<br />
+
+
+<br />
+<br />
+
+
+
+<br />
+<br />
+
+
+
+
+
+<br />
+<br />
+
+
+
+
+
+<br />
+<br />
+
+
+
+
+<br />
+<br />
+
+
+
+
+
+<br />
+<br />
+
+# Session Info
+
+
+```{r}
+#| label: session-info
+sessionInfo()
+```
+
+
+
+

@@ -1,0 +1,510 @@
+---
+title: Chromatin landscape in zebrafish lymphatic system development <br> 
+subtitle: ATAC-seq<br>peak annotation, differential accessibility, visualisations and TF footprinting<br>  NBIS 5931
+author: Agata Smialowska
+format:
+  html:
+    theme: cosmo
+    mainfont: Georgia
+    fontcolor: "#404040"
+    highlight-style: pygments
+    html-math-method: katex
+    code-fold: true
+    number-sections: true
+    toc: true
+    toc-title: Contents
+    toc-location: left
+    toc-expand: true
+    toc-depth: 4
+    toc-float:
+      collapsed: no
+    fig-width: 8
+    fig-height: 8
+    css: "style.css"
+    code-block-bg: "grey80"
+    code-block-border-left: true
+    embed-resources: true
+engine: knitr
+date: today
+bibliography: references.bib
+---
+
+
+Analyses for manuscript: *Panara et al, 2026*.
+
+
+<br />
+<br />
+
+```{r}
+#| echo: FALSE
+htmltools::img(src = knitr::image_uri(file.path("logos", "nbislogo-blue-txt.png")), 
+               alt = 'NBISlogo', 
+               style = 'position:absolute; top:0; left:0; padding:10px; width: 10vw')
+htmltools::img(src = knitr::image_uri(file.path("logos", "SLLNew.png")), 
+               alt = 'SLLlogo', 
+              style = 'position:absolute; top:0; right:0; padding:10px; height: 5vw')
+```
+
+
+```{r}
+#| echo: FALSE
+#| include: FALSE
+#| cache: FALSE
+
+library(knitr)
+
+
+knitr::opts_chunk$set(echo = TRUE, 
+                      collapse = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      include=TRUE,
+                      out.width = "80%")
+
+options(knitr.duplicate.label = "allow")
+
+script_pth="./src/5931-atacseq-da.R"
+knitr::read_chunk(script_pth)
+```
+
+<br />
+<br />
+<br />
+
+Sample naming convention when referring to replicates:
+
+* pp - prox1 positive, i.e. LEC 
+
+* no prefix - BEC
+
+
+<br />
+<br />
+
+# Plots
+
+* Peak annot chipseeker plot (Fig EV 3b) **DONE**
+
+* Venn accessible peaks (Fig EV 3C) **DONE**
+
+* heatmap top 500 peaks by signal (Fig EV 3D) **DONE**
+
+* heatmap top 100 DA promoters (Fig EV 3E) **DONE**
+
+* volcano of TOBIAS LEC/BEC coloured (Fig 7A) **DONE**
+
+* Mafb motif at promoters (Fig A4A) && lists of common / LEC / BEC promoters **DONE**
+
+* Mafb endothelial motif at promoters (Fig A4C) && lists of common / LEC / BEC promoters **DONE**
+
+
+<br />
+<br />
+
+
+
+# Environment
+
+
+
+```{r}
+#| label: prep-env
+```
+
+
+
+```{r}
+#| label: dirs
+```
+
+
+
+```{r}
+#| label: functions
+```
+
+
+```{r}
+#| label: cutoffs
+```
+
+# Annotations
+
+
+
+```{r}
+#| label: annots
+```
+
+
+
+
+# Data
+
+
+
+```{r}
+#| label: data
+```
+
+
+# Results
+
+
+## Peak annotation
+
+Peaks were annotated to their closest genomic features.
+
+
+
+```{r}
+#| label: peaks_profile
+```
+
+<br />
+
+::: {#fig-peak-TSS}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+#| fig-width: 4
+
+TSS_profile
+```
+
+ATAC-seq signal at TSS.
+:::
+
+<br />
+
+
+
+```{r}
+#| label: peak_annotation
+```
+
+<br />
+
+### Figure EV 3B
+
+
+**Figure EV 3B**
+
+<br />
+
+::: {#fig-peak-annot}
+
+```{r}
+#| echo: false
+
+peakAnnoplot
+```
+
+Summary of ATAC-seq peak annotation.
+:::
+
+<br />
+
+
+## Data exploration
+
+Counts were scaled using TMM [@TMM] and adjusted for sorting batch using function `ComBat` from R package `sva` [@sva].
+
+If not stated otherwise, scaled and batch adjusted logcounts were used for plotting.
+PCA is presented for reference.
+
+
+```{r}
+#| label: TMM-norm
+```
+
+
+```{r}
+#| label: pca
+```
+
+
+<br />
+
+::: {#fig-pca}
+
+```{r}
+#| echo: false
+#| fig-height: 4
+
+pca
+```
+PCA plot. Logcounts after TMM scaling and sorting batch correction (ComBat) were used for PCA calculation.
+:::
+
+<br />
+<br />
+
+
+
+
+
+## Differential accessibility
+
+Differential accessibility was inferred using `glmLRT` as implemented in `edgeR` [@edgeR].
+
+<br />
+
+```{r}
+#| label: da
+```
+
+Summary statistics of DA peaks are presented below. Cutoffs used:
+
+* FDR: `r FDR_CO`
+
+* log2FC `r lFC_CO`
+
+
+<br />
+
+Peak numbers, no filtering:
+
+* All peaks, not filtered: `r nrow(cnt_table)`
+
+<br />
+
+
+Peak numbers, after filtering off low signal peaks (i.e. used for DA analysis):
+
+
+* All peaks in DA: `r nrow(DA_res)`
+
+* Significant DA peaks at FDR  `r FDR_CO`:
+
+* Peaks DA open in LEC: `r nrow(DA.res.sig.up)`
+
+* Peaks DA open in BEC: `r nrow(DA.res.sig.dn)`
+
+
+
+
+<br />
+<br />
+
+### Accessible peaks summary
+
+
+```{r}
+#| label: peaks_venn
+```
+
+#### Fig EV 3C
+
+
+
+**Fig EV 3C** panel A
+
+
+
+
+<br />
+
+::: {#fig-venn-DA}
+
+```{r}
+#| echo: false
+cowplot::plot_grid(venn_DA_peaks.0,venn_DA_peaks,
+       ncol=2, labels=c("A","B"))
+```
+
+Venn diagramm of open chromatin peaks. DA peaks are at log2FC `r lFC_CO` and FDR `r FDR_CO`. A - no log2FC cutoff; B - log2FC cutoff `r lFC_CO`.
+:::
+
+<br />
+
+
+
+## Signal Visualisation
+
+
+
+### Top signal peaks
+
+
+
+```{r}
+#| label: peaks_highest_count
+```
+
+
+Top `r n_top_peaks` peaks by highest signal (average counts after TMM scaling)
+
+
+
+
+#### Figure EV 3D
+
+
+
+**Figure EV 3D**
+
+<br />
+
+::: {#fig-top-peaks-hm}
+
+```{r}
+#| echo: false
+hm2
+```
+
+Heatmap of ATAC-seq signal in top `r n_top_peaks` peaks, by average signal. Scaled row logcounts are plotted, after adjustment for sorting batch (ComBat).
+:::
+
+<br />
+
+
+
+### Promoter peaks
+
+
+```{r}
+#| label: peaks_promoter
+```
+
+
+```{r}
+#| label: top100_promoters
+```
+
+<br />
+
+#### Figure EV 3E
+
+
+**Figure EV 3E**
+
+<br />
+
+::: {#fig-top-prom-hm}
+
+```{r}
+#| echo: false
+hm1
+```
+
+Heatmap of ATAC-seq signal in top 100 promoters. Scaled row logcounts are plotted, after adjustment for sorting batch (ComBat).
+:::
+
+<br />
+
+
+
+
+## TF footprinting
+
+TF footprinting was performed using TOBIAS [@Bentsen2020].
+
+<br />
+<br />
+
+### Summary volcano plot
+
+The colouring on this plot is as in TOBIAS default: top / bottom 5 percentile of log2(score fold change) was coloured. 
+
+
+
+```{r}
+#| label: bindetect_volcano
+```
+
+<br />
+<br />
+
+#### Fig 7A
+
+
+**Fig 7A**
+
+
+<br />
+
+::: {#fig-TFftprint-volcano}
+
+```{r}
+#| echo: false
+
+volcano_diff
+```
+
+Comparison of TF footprints in LEC vs. BEC.
+:::
+
+<br />
+
+
+### Mafb motif TF footprinting summary
+
+**Please note this analysis was performed in SYMBOL gene id space.** This means that genes annotated with the SYMBOL id are included in these comparisons. 
+
+
+```{r}
+#| label: mafba_targets
+```
+
+#### Fig A4A
+
+Mafb motif (consensus motifs) at promoters.
+
+
+**Fig A4A**
+
+
+<br />
+
+::: {#fig-TFftprint-mafb-venn-allmotifs}
+
+```{r}
+#| echo: false
+
+venn_mafba_combo
+```
+
+Mafb motif occupancy at promoters. Union of consensus motifs (Jaspar & Hocomoco) shown.
+:::
+
+<br />
+
+
+
+#### Fig A4C
+
+Mafb motif (endothelial motif) at promoters
+
+**Fig A4C**
+
+
+<br />
+
+::: {#fig-TFftprint-mafb-venn-endothelial-motifs}
+
+```{r}
+#| echo: false
+
+venn_mafba_endothelial
+```
+
+Mafb motif occupancy at promoters. Endothelial motif shown.
+:::
+
+<br />
+
+
+
+<br />
+<br />
+
+# Session Info
+
+
+```{r}
+#| label: session-info
+sessionInfo()
+```
